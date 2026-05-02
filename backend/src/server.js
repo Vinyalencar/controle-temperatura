@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const pool = require('./database/connection');
 
 const app = express();
 const port = 3000
@@ -28,27 +29,38 @@ app.get('/health', (request, response) => {
     response.json({ status: 'ok' });
 });
 
-app.get('/equipamentos', (request, response) => {
-    response.json(equipamentos);
+app.get('/equipamentos', async (request, response) => {
+    const result = await pool.query(`
+    SELECT
+      id,
+      nome,
+      temperatura_atual AS "temperaturaAtual",
+      setpoint
+    FROM equipamentos
+    ORDER BY id
+  `);
+
+    response.json(result.rows);
 });
 
-app.patch('/equipamentos/:id/setpoint', (request, response) => {
-    const id = Number(request.params.id);
-    const { setpoint } = request.body;
+app.patch('/equipamentos/:id/setpoint', async (request, response) => {
+  const id = Number(request.params.id)
+  const { setpoint } = request.body
+  const result = await pool.query(
+    `
+      UPDATE equipamentos
+      SET setpoint = $1
+      WHERE id = $2
+      RETURNING
+        id,
+        nome,
+        temperatura_atual AS "temperaturaAtual",
+        setpoint
+    `,
+    [setpoint, id]
+  )
 
-    equipamentos = equipamentos.map((equipamento) => {
-        if (equipamento.id === id) {
-            return {
-                ...equipamento,
-                setpoint,
-            }
-        }
-        return equipamento
-    })
-
-    const equipamentoAtualizado = equipamentos.find((equipamento) => equipamento.id === id);
-
-    response.json(equipamentoAtualizado);
+  response.json(result.rows[0])
 })
 
 app.listen(port, () => {

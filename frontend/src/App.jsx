@@ -43,6 +43,7 @@ function App() {
 
       {equipamentos.map((equipamento) => (
         <EquipmentCard
+          key={equipamento.id}
           equipamento={equipamento}
           onAlterarSetpoint={alterarSetpoint}
         />
