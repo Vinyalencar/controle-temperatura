@@ -1,68 +1,35 @@
-const express = require('express');
-const cors = require('cors');
-const pool = require('./database/connection');
+const express = require('express')
+const cors = require('cors')
+const pool = require('./database/connection')
 
-const app = express();
+const createPostgresEquipmentRepository = require('./adapters/database/postgres-equipment-repository')
+const createListEquipments = require('./application/list-equipments')
+const createUpdateEquipmentSetpoint = require('./application/update-equipment-setpoint')
+const createEquipmentController = require('./adapters/http/equipment-controller')
+
+const app = express()
 const port = 3000
 
-app.use(cors());
-app.use(express.json());
+app.use(cors())
+app.use(express.json())
 
-let equipamentos = [{
-    id: 1,
-    nome: 'CH21',
-    temperaturaAtual: 22,
-    setpoint: 23
-}, {
-    id: 2,
-    nome: 'CH02',
-    temperaturaAtual: 22,
-    setpoint: 23
-}, {
-    id: 3,
-    nome: 'CH03',
-    temperaturaAtual: 22,
-    setpoint: 23
-}]
+const equipmentRepository = createPostgresEquipmentRepository(pool)
 
-app.get('/health', (request, response) => {
-    response.json({ status: 'ok' });
-});
+const listEquipments = createListEquipments(equipmentRepository)
+const updateEquipmentSetpoint = createUpdateEquipmentSetpoint(equipmentRepository)
 
-app.get('/equipamentos', async (request, response) => {
-    const result = await pool.query(`
-    SELECT
-      id,
-      nome,
-      temperatura_atual AS "temperaturaAtual",
-      setpoint
-    FROM equipamentos
-    ORDER BY id
-  `);
-
-    response.json(result.rows);
-});
-
-app.patch('/equipamentos/:id/setpoint', async (request, response) => {
-  const id = Number(request.params.id)
-  const { setpoint } = request.body
-  const result = await pool.query(
-    `
-      UPDATE equipamentos
-      SET setpoint = $1
-      WHERE id = $2
-      RETURNING
-        id,
-        nome,
-        temperatura_atual AS "temperaturaAtual",
-        setpoint
-    `,
-    [setpoint, id]
-  )
-
-  response.json(result.rows[0])
+const equipmentController = createEquipmentController({
+  listEquipments,
+  updateEquipmentSetpoint,
 })
 
+app.get('/health', (request, response) => {
+  response.json({ status: 'ok' })
+})
+
+app.get('/equipamentos', equipmentController.list)
+app.patch('/equipamentos/:id/setpoint', equipmentController.updateSetpoint)
+
 app.listen(port, () => {
-    console.log(`API rodando na porta ${port}`);
-});
+  console.log(`API rodando na porta ${port}`)
+})
