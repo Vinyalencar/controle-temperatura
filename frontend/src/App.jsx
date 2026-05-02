@@ -1,45 +1,47 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 import EquipmentCard from './components/EquipmentCard'
 
 function App() {
-  const [equipamento, setEquipamento] = useState([{
-    id: 1,
-    nome: 'CH01',
-    temperaturaAtual: 22,
-    setpoint: 23
-  }, {
-    id: 2,
-    nome: 'CH02',
-    temperaturaAtual: 22,
-    setpoint: 23
-  }, {
-    id: 3,
-    nome: 'CH03',
-    temperaturaAtual: 22,
-    setpoint: 23
-  }])
+  const [equipamentos, setEquipamentos] = useState([])
 
-  function alterarSetpoint(id, novoSetpoint) {
-    const equipamentoAtualizado = equipamento.map((equipamento) => {
+  useEffect(() => {
+    async function buscarEquipamentos() {
+      const resposta = await fetch('http://localhost:3000/equipamentos')
+      const dados = await resposta.json()
+      setEquipamentos(dados)
+    }
+
+    buscarEquipamentos()
+  }, [])
+
+  async function alterarSetpoint(id, novoSetpoint) {
+
+    const resposta = await fetch(`http://localhost:3000/equipamentos/${id}/setpoint`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ setpoint: novoSetpoint })
+    })
+
+    const equipamentoAtualizado = await resposta.json()
+
+    const equipamentosAtualizados = equipamentos.map((equipamento) => {
       if (equipamento.id === id) {
-        return {
-          ...equipamento,
-          setpoint: novoSetpoint
-        }
+        return equipamentoAtualizado
       }
-
       return equipamento
     })
 
-    setEquipamento(equipamentoAtualizado)
+    setEquipamentos(equipamentosAtualizados)
   }
 
   return (
     <main>
       <h1> Controle de Temperatura</h1>
 
-      {equipamento.map((equipamento) => (
+      {equipamentos.map((equipamento) => (
         <EquipmentCard
           equipamento={equipamento}
           onAlterarSetpoint={alterarSetpoint}
